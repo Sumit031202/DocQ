@@ -18,4 +18,4 @@ DocQ is a real-time smart queuing system designed for clinics and hospitals to m
 3. Setup `.env.local` with Supabase credentials.
 4. `npm run dev`
 
-## helloo
+## hellooi
