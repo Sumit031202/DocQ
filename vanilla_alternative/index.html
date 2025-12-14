@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocQ - Vanilla JS</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .card {
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        input,
+        button {
+            padding: 10px;
+            width: 100%;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background: #000;
+            color: #fff;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>DocQ</h1>
+
+    <div id="join-form">
+        <h2>Join Queue</h2>
+        <input type="text" id="name" placeholder="Name" required>
+        <input type="tel" id="phone" placeholder="Phone" required>
+        <input type="text" id="reason" placeholder="Reason (Optional)">
+        <button onclick="joinQueue()">Join</button>
+    </div>
+
+    <div id="token-card" class="hidden card">
+        <h2>Your Token</h2>
+        <h1 id="token-display" style="font-size: 3em; text-align: center;">-</h1>
+        <p>Estimated Wait: <span id="wait-display">-</span> mins</p>
+        <p>Status: <span id="status-display">Waiting</span></p>
+    </div>
+
+    <script>
+        // Replace with your actual URL and Key
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        const SUPABASE_KEY = 'YOUR_ANON_KEY';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function joinQueue() {
+            const name = document.getElementById('name').value;
+            const phone = document.getElementById('phone').value;
+            const reason = document.getElementById('reason').value;
+
+            if (!name || !phone) return alert('Name and Phone are required');
+
+            const { data, error } = await supabase.rpc('insert_queue_item', {
+                p_name: name,
+                p_phone: phone,
+                p_email: null,
+                p_reason: reason
+            });
+
+            if (error) {
+                console.error(error);
+                alert('Error joining queue: ' + error.message);
+            } else {
+                showToken(data);
+            }
+        }
+
+        function showToken(data) {
+            document.getElementById('join-form').classList.add('hidden');
+            document.getElementById('token-card').classList.remove('hidden');
+            document.getElementById('token-display').innerText = data.token_number;
+            document.getElementById('wait-display').innerText = Math.round(data.estimated_wait_seconds / 60);
+
+            // Subscribe to changes
+            supabase
+                .channel('public:queue')
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'queue', filter: `id=eq.${data.id}` }, payload => {
+                    document.getElementById('status-display').innerText = payload.new.status;
+                })
+                .subscribe();
+        }
+    </script>
+</body>
+
+</html>
